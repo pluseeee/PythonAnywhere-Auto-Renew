@@ -10,56 +10,48 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         run: |
           git clone --depth=50 https://github.com/${{ github.repository }}.git .
           git checkout ${{ github.ref_name }}
-      
+
       - name: Setup Python
         run: |
           echo "Python version:"
           python3 --version
-      
+
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip3 install requests beautifulsoup4 python-dotenv
-      
+
       - name: Diagnose secrets (temporary)
         env:
-          PA_USERNAME_1: ${{ secrets.PA_USERNAME_1 }}
-          PA_PASSWORD_1: ${{ secrets.PA_PASSWORD_1 }}
-          PA_USERNAME_2: ${{ secrets.PA_USERNAME_2 }}
-          PA_PASSWORD_2: ${{ secrets.PA_PASSWORD_2 }}
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
         run: |
-          echo "PA_USERNAME_1 length: ${#PA_USERNAME_1}"
-          echo "PA_PASSWORD_1 length: ${#PA_PASSWORD_1}"
-          echo "PA_USERNAME_2 length: ${#PA_USERNAME_2}"
-          echo "PA_PASSWORD_2 length: ${#PA_PASSWORD_2}"
+          echo "PA_USERNAME length: ${#PA_USERNAME}"
+          echo "PA_PASSWORD length: ${#PA_PASSWORD}"
 
       - name: Run renewal script
         env:
-          PA_USERNAME_1: ${{ secrets.PA_USERNAME_1 }}
-          PA_PASSWORD_1: ${{ secrets.PA_PASSWORD_1 }}
-          PA_USERNAME_2: ${{ secrets.PA_USERNAME_2 }}
-          PA_PASSWORD_2: ${{ secrets.PA_PASSWORD_2 }}
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
         run: python3 renew_python_anywhere.py
-      
+
       - name: Keep Alive Workflow (Success)
         if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Create logs directory if it doesn't exist
+
           mkdir -p .github/logs
-          
-          # Create or append to workflow log file
+
           LOG_FILE=".github/logs/workflow_runs.log"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
+
           echo "========================================" >> $LOG_FILE
           echo "Workflow Run: $TIMESTAMP" >> $LOG_FILE
           echo "Status: SUCCESS ✅" >> $LOG_FILE
@@ -70,28 +62,25 @@ jobs:
           echo "Run Number: ${{ github.run_number }}" >> $LOG_FILE
           echo "========================================" >> $LOG_FILE
           echo "" >> $LOG_FILE
-          
-          # Commit the log
+
           git add $LOG_FILE
-          git commit -m "log: workflow run SUCCESS on $TIMESTAMP"
+          git commit -m "log: workflow run SUCCESS on $TIMESTAMP" || echo "No changes to commit"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin ${{ github.ref_name }}
-          
+
           echo "✅ Success logged and committed"
-      
+
       - name: Keep Alive Workflow (Failure)
         if: failure()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Create logs directory if it doesn't exist
+
           mkdir -p .github/logs
-          
-          # Create or append to workflow log file
+
           LOG_FILE=".github/logs/workflow_runs.log"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
+
           echo "========================================" >> $LOG_FILE
           echo "Workflow Run: $TIMESTAMP" >> $LOG_FILE
           echo "Status: FAILED ❌" >> $LOG_FILE
@@ -103,11 +92,10 @@ jobs:
           echo "Note: Check GitHub Actions logs for error details" >> $LOG_FILE
           echo "========================================" >> $LOG_FILE
           echo "" >> $LOG_FILE
-          
-          # Commit the log
+
           git add $LOG_FILE
-          git commit -m "log: workflow run FAILED on $TIMESTAMP"
+          git commit -m "log: workflow run FAILED on $TIMESTAMP" || echo "No changes to commit"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin ${{ github.ref_name }}
-          
+
           echo "❌ Failure logged and committed"
